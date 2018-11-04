@@ -6,18 +6,22 @@
 %%====================================================================
 %% API functions
 %%====================================================================
-main([FileName]) ->
+main(Args) ->
+    ok = io:setopts(standard_io, [{binary, true}]),
+    main_(Args).
+
+main_(["-"]) ->
+    {ok, Data} = read_in(),
+    go(Data);
+main_([FileName]) ->
     case file:read_file(FileName) of
         {ok, Data} ->
-            {ok, Translated} = translate(binary_to_list(Data)),
-            {ok, Pretty} = fmt(Translated, 4, 80),
-            io:format("~ts~n", [Pretty]),
-            ok;
+            go(Data);
         {error, enoent} ->
             stderr("No such file"),
             halt(1)
     end;
-main(_) ->
+main_(_) ->
     usage(),
     halt(1).
 
@@ -26,6 +30,12 @@ usage() ->
 
 stderr(Str) ->
     io:format(standard_error, Str, []).
+
+go(Data) ->
+    {ok, Translated} = translate(binary_to_list(Data)),
+    {ok, Pretty} = fmt(Translated, 4, 80),
+    io:format("~ts~n", [Pretty]),
+    ok.
 
 %% fmt/3 formats a string containing an erlang term in a pretty-printed way
 fmt(String, Indent, MaxCol) ->
@@ -67,3 +77,14 @@ translate(Data) ->
                                                             global]),
     {ok, Res4}.
 
+%% read_in/0 reads data from stdin
+read_in() ->
+    read_in(<<>>).
+
+read_in(Buf) ->
+    case io:get_chars('', 16384) of
+        eof ->
+            {ok, Buf};
+        Block ->
+            read_in(<<Buf/binary, Block/binary>>)
+    end.
