@@ -27,6 +27,7 @@ usage() ->
 stderr(Str) ->
     io:format(standard_error, Str, []).
 
+%% fmt/3 formats a string containing an erlang term in a pretty-printed way
 fmt(String, Indent, MaxCol) ->
     try
         {ok, AbsTerm, _} = erl_scan:string(String ++ "."),
@@ -44,6 +45,17 @@ fmt(String, Indent, MaxCol) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+
+%% translate/1 makes the input string parsable
+%%
+%% Erlang output is not isomorphic in the sense you cannot parse it
+%% again. One of the many reasons are that Ports, Pids and References
+%% cannot be read into a VM again in this textual format. Hence we fix
+%% that by wrapping such things in single quotes, making them into
+%% atoms for the parser to chew on.
+%%
+%% The truly isomorphic thing are term_to_binary/binary_to_term, but
+%% they are not human-readable and rarely in log lines.
 translate(Data) ->
     Res1 = re:replace(Data, "\\.\\.\\.", "'&'", [{return, list},
                                                  global]),
